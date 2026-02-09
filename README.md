@@ -6,6 +6,7 @@ Implémenter un looper pour la création musicale en live.
 
 - enregistrer un court extrait sonore et le retranscrire directement
 - superposer les enregistrements successifs
+- 
 - éventuellement : suivre une pulsation, enregistrer et sauvegarder des projets, ajouter des effets (youhou la reverb)
 
 **Les boutons du loupeur**
@@ -18,4 +19,5 @@ Implémenter un looper pour la création musicale en live.
 
 **Ressources**
 
-[Looper example](https://github.com/cutlasses/Looper)
+- [TeensyAudio Library](https://github.com/dotmos/TeensyAudio)
+- [Looper example](https://github.com/cutlasses/Looper)
