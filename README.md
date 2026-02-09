@@ -10,9 +10,12 @@ Implémenter un looper pour la création musicale en live.
 
 **Les boutons du loupeur**
 
-- start loop: démarrer la boucle 
-- start record: commencer un enregistrement
-- stop record : arrêter un enregistrement
-- undo
-- stop loop
+- bouton start/stop loop: démarrer la boucle 
+- bouton star/stop record: commencer un enregistrement
+- bouton undo
+- potentiometre gain mic
+- potentiometre volume sortie
 
+**Ressources**
+
+[Looper example](https://github.com/cutlasses/Looper)
