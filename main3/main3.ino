@@ -34,9 +34,11 @@ AudioControlSGTL5000     sgtl5000_1;     //xy=265,212
 
 Bounce buttonLoop = Bounce(0, 8);
 Bounce buttonUndo =   Bounce(1, 8);  // 8 = 8 ms debounce time
-Bounce button3 =   Bounce(2, 8);
+Bounce buttonPause =   Bounce(2, 8);
 
 const int myInput = AUDIO_INPUT_MIC;
+
+const float analogDiv = 1.0/1023.0; // analog Read divisor
 
 #define SDCARD_CS_PIN    10
 #define SDCARD_MOSI_PIN  7   
@@ -44,7 +46,7 @@ const int myInput = AUDIO_INPUT_MIC;
 
 int recording = 0;
 int playing = 0;
-int existingFile = 0;
+int trackNumber = 0;
 
 File frec;
 
@@ -63,6 +65,7 @@ void setup() {
   sgtl5000_1.enable();
   sgtl5000_1.inputSelect(myInput);
   sgtl5000_1.volume(0.5);
+  sgtl5000_1.micGain(0.1);
 
   // Initialize the SD card
   SPI.setMOSI(SDCARD_MOSI_PIN);
@@ -78,14 +81,26 @@ void setup() {
 }
 
 void loop() {
-  // Update buttons
+  // set and volume
+  setVolume();
+  setGain();
 
+  // Update buttons
   buttonLoop.update();
   buttonUndo.update();
-  button3.update();
+  buttonPause.update();
 
-  if (buttonLoop.fallingEdge()){
+  if (buttonLoop.fallingEdge()) {
     mainLoopButton();
+  }
+
+  if (buttonUndo.fallingEdge()) {
+    trackNumber-=1;
+    if (trackNumber<0) trackNumber = 0;
+  }
+
+  if (buttonPause.fallingEdge()) {
+    pausePlay();
   }
 
   if (recording == 1) {
@@ -94,40 +109,27 @@ void loop() {
   if (playing == 1) {
     continuePlaying();
   }
-
-  // when using a microphone, continuously adjust gain
-  if (myInput == AUDIO_INPUT_MIC) adjustMicLevel();
-
 }
 
 void mainLoopButton() {
   
-  if (existingFile==0) {
+  if (trackNumber==0) {
       if (recording==0) {
           recording = 1;
-          Serial.println("recording");
           startRecording();
-          
-          // start recording, start chrono for looplength
+          // missing loop time measurement
       }
       else if (recording==1) {
           stopRecording();
-          Serial.println("Saving");
           startPlaying();
-          // stops recording, stops chrono, save audio file, starts playing saved audio file 
       }
-  }
-
-  else if (existingFile==1) {
-      // stops loop, discards existing file
-      existingFile = 0;
-
-      stopPlaying();
-      playing = 0;
-      Serial.println("Stoping");
   }
 }
 
+void pausePlay() {
+  if (playing) stopPlaying();
+  else startPlaying();
+}
 
 void startRecording() {
   Serial.println("startRecording");
@@ -174,7 +176,7 @@ void continueRecording() {
 }
 
 void stopRecording() {
-  Serial.println("stopRecording");
+  Serial.println("stopRecording+saving");
   queue1.end();
   if (recording == 1) {
     while (queue1.available() > 0) {
@@ -184,7 +186,7 @@ void stopRecording() {
     frec.close();
   }
   recording = 0;
-  existingFile = 1;
+  trackNumber = 1;
 }
 
 
@@ -208,8 +210,14 @@ void stopPlaying() {
   playing = 0;
 }
 
-void adjustMicLevel() {
+void setGain() {
   // TODO: read the peak1 object and adjust sgtl5000_1.micGain()
   // if anyone gets this working, please submit a github pull request :-)
+  float readGain = analogRead(A2)*analogDiv;
+  sgtl5000_1.micGain(readGain);
 }
 
+void setVolume() {
+  float readVolume = analogRead(A0)*analogDiv;
+  sgtl5000_1.volume(readVolume);
+}
