@@ -85,9 +85,8 @@ void loop() {
   button3.update();
 
   if (buttonLoop.fallingEdge()){
-    StartStopButton();
+    mainLoopButton();
   }
-
 
   if (recording == 1) {
     continueRecording();
@@ -101,7 +100,7 @@ void loop() {
 
 }
 
-void StartStopButton() {
+void mainLoopButton() {
   
   if (existingFile==0) {
       if (recording==0) {
@@ -112,13 +111,10 @@ void StartStopButton() {
           // start recording, start chrono for looplength
       }
       else if (recording==1) {
-          recording = 0;
           stopRecording();
           Serial.println("Saving");
           startPlaying();
-          playing = 1;
           // stops recording, stops chrono, save audio file, starts playing saved audio file 
-          existingFile = 1;
       }
   }
 
@@ -188,19 +184,21 @@ void stopRecording() {
     frec.close();
   }
   recording = 0;
+  existingFile = 1;
 }
 
 
 void startPlaying() {
   Serial.println("startPlaying");
   playRaw1.play("RECORD.RAW");
+  playing =1;
 
 }
 
 void continuePlaying() {
   if (!playRaw1.isPlaying()) {
     playRaw1.stop();
-   
+    playRaw1.play("RECORD.RAW");
   }
 }
 
