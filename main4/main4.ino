@@ -40,9 +40,13 @@ File frec;
 
 int  trackNumber = 0;   // how many tracks recorded
 bool recording   = false;
-bool playing     = false;
+bool playing[MAXTRACKS];
+
+float analogDiv = 1.0/1023.0;
 
 unsigned long loopLengthBytes = 0;   // reference length
+unsigned long tracksLength;
+unsigned long tracksBeginning[MAXTRACKS];
 
 // =================================================
 
@@ -74,6 +78,7 @@ void setup() {
       delay(300);
     }
   }
+  for (int i=0; i<MAXTRACKS; i++) playing[i]=false;
 
   // Equal levels in mixer
   for (int i=0;i<MAXTRACKS;i++)
@@ -83,6 +88,9 @@ void setup() {
 // =================================================
 
 void loop() {
+
+  setVolume();
+  setGain();
 
   buttonLoop.update();
   buttonUndo.update();
@@ -94,14 +102,15 @@ void loop() {
   if (buttonUndo.fallingEdge())
     undoTrack();
 
-  if (buttonPause.fallingEdge())
-    togglePlay();
+  //if (buttonPause.fallingEdge())
+    //togglePlay();
 
   if (recording)
     continueRecording();
 
-  if (playing)
-    checkLoopSync();
+  for (int i=0; i<trackNumber; i++) {
+    checkLoopEnd(i);
+  }
 }
 
 // =================================================
@@ -123,9 +132,8 @@ void mainButton() {
       loopLengthBytes =
         SD.open(trackNames[0]).size();
 
+      startPlaying(0);
       trackNumber = 1;
-
-      startAll();
     }
   }
 
@@ -137,12 +145,11 @@ void mainButton() {
     }
     else {
       stopRecording();
-
+      startPlaying(trackNumber);
       trackNumber++;
+
       if (trackNumber > MAXTRACKS)
           trackNumber = MAXTRACKS;
-
-      startAll();
     }
   }
 }
@@ -153,19 +160,16 @@ void undoTrack() {
 
   if (trackNumber > 0) {
     trackNumber--;
-
-    stopAll();
-    startAll();
   }
 }
 
 // =================================================
-
+/*
 void togglePlay() {
   if (playing) stopAll();
   else         startAll();
 }
-
+*/
 // =================================================
 // ========== RECORDING ============================
 // =================================================
@@ -173,6 +177,7 @@ void togglePlay() {
 void startRecording(int index) {
 
   const char* name = trackNames[index];
+  tracksBeginning[index]= millis();
 
   if (SD.exists(name))
     SD.remove(name);
@@ -200,13 +205,19 @@ void continueRecording() {
     frec.write(buffer, 512);
 
     // --- LIMIT LENGTH TO LOOP SIZE ---
-    if (trackNumber > 0 &&
-        frec.size() >= loopLengthBytes) {
-
-      stopRecording();
-      trackNumber++;
-      startAll();
+    /*
+    if (trackNumber > 0 && frec.size() >= loopLengthBytes) {
+      stopRecoring();
     }
+    */
+    Serial.println(millis() - tracksBeginning[trackNumber]);
+    Serial.println(tracksLength);
+    if (millis() - tracksBeginning[trackNumber] > tracksLength && trackNumber>0) {
+      stopRecording();
+      startPlaying(trackNumber);
+      trackNumber++;
+    }
+    
   }
 }
 
@@ -214,6 +225,8 @@ void continueRecording() {
 
 void stopRecording() {
 
+  if (trackNumber==0) tracksLength = millis() - tracksBeginning[trackNumber];
+  
   queue1.end();
 
   while (queue1.available()) {
@@ -223,42 +236,46 @@ void stopRecording() {
 
   frec.close();
   recording = false;
+  
 }
 
 // =================================================
 // ============ PLAYBACK ===========================
 // =================================================
 
-void startAll() {
-
-  for (int i=0; i<trackNumber; i++)
-    players[i].play(trackNames[i]);
-
-  playing = true;
+void startPlaying(int i) {
+  players[i].play(trackNames[i]);
+  playing[i] = true;
+  tracksBeginning[i] = millis();
 }
 
 // -------------------------------------------------
 
 void stopAll() {
 
-  for (int i=0; i<MAXTRACKS; i++)
+  for (int i=0; i<MAXTRACKS; i++){
     players[i].stop();
+    playing[i] = false;
+  }
+}
 
-  playing = false;
+void checkLoopEnd(int i) {
+  if (millis()>tracksBeginning[i]+tracksLength) {
+    startPlaying(i);
+  }
 }
 
 // -------------------------------------------------
 
-// Keep all tracks in sync
-void checkLoopSync() {
 
-  // If ANY track finished → restart all
-  for (int i=0; i<trackNumber; i++) {
+void setGain() {
+  // TODO: read the peak1 object and adjust sgtl5000_1.micGain()
+  // if anyone gets this working, please submit a github pull request :-)
+  float readGain = analogRead(A2)*analogDiv;
+  sgtl5000_1.micGain(readGain);
+}
 
-    if (!players[i].isPlaying()) {
-
-      startAll();     // global restart
-      break;
-    }
-  }
+void setVolume() {
+  float readVolume = analogRead(A0)*analogDiv;
+  sgtl5000_1.volume(readVolume);
 }
