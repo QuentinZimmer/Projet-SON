@@ -159,6 +159,7 @@ void mainButton() {
 void undoTrack() {
 
   if (trackNumber > 0) {
+    stopPlaying(trackNumber);
     trackNumber--;
   }
 }
@@ -257,6 +258,11 @@ void stopAll() {
     players[i].stop();
     playing[i] = false;
   }
+}
+
+void stopPlaying(int i) {
+  players[i].stop();
+  playing[i] = false;
 }
 
 void checkLoopEnd(int i) {
