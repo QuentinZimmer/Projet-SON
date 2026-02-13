@@ -178,7 +178,7 @@ void togglePlay() {
 void startRecording(int index) {
 
   const char* name = trackNames[index];
-  tracksBeginning[index]= millis();
+  tracksBeginning[index]= micros();
 
   if (SD.exists(name))
     SD.remove(name);
@@ -211,9 +211,9 @@ void continueRecording() {
       stopRecoring();
     }
     */
-    Serial.println(millis() - tracksBeginning[trackNumber]);
+    Serial.println(micros() - tracksBeginning[trackNumber]);
     Serial.println(tracksLength);
-    if (millis() - tracksBeginning[trackNumber] > tracksLength && trackNumber>0) {
+    if (micros() - tracksBeginning[trackNumber] > tracksLength && trackNumber>0) {
       stopRecording();
       startPlaying(trackNumber);
       trackNumber++;
@@ -226,7 +226,7 @@ void continueRecording() {
 
 void stopRecording() {
 
-  if (trackNumber==0) tracksLength = millis() - tracksBeginning[trackNumber];
+  if (trackNumber==0) tracksLength = micros() - tracksBeginning[trackNumber];
   
   queue1.end();
 
@@ -247,7 +247,7 @@ void stopRecording() {
 void startPlaying(int i) {
   players[i].play(trackNames[i]);
   playing[i] = true;
-  tracksBeginning[i] = millis();
+  tracksBeginning[i] = micros();
 }
 
 // -------------------------------------------------
@@ -266,7 +266,7 @@ void stopPlaying(int i) {
 }
 
 void checkLoopEnd(int i) {
-  if (millis()>tracksBeginning[i]+tracksLength) {
+  if (micros()>tracksBeginning[i]+tracksLength) {
     startPlaying(i);
   }
 }
