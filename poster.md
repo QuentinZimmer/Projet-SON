@@ -19,7 +19,7 @@ Contrairement à une simple lecture en boucle, un looper multitrack impose :
 * une gestion dynamique des enregistrements,
 * un mixage temps réel stable.
 
-![dessin_looper](/home/elie/insa/3TC/son/Projet-SON/looper_dessin.png)
+![dessin_looper](./looper_dessin.png)
 
 ## Architecture matérielle
 
@@ -29,7 +29,7 @@ Contrairement à une simple lecture en boucle, un looper multitrack impose :
 * Interface utilisateur : boutons + potentiomètres
 * Le tout est monté sur breadboard avec câblages
 
-![schema_elec_looper](/home/elie/insa/3TC/son/Projet-SON/schema_elec_looper.png)
+![schema_elec_looper](./schema_elec_looper.png)
 
 ##  Architecture logicielle
 
@@ -94,7 +94,7 @@ if (temps_actuel > début_piste + loopLength)
 
 Approche : **synchronisation temporelle absolue**, et non indexée sur la position du fichier audio.
 
-![schema_implantation_pistes](/home/elie/insa/3TC/son/Projet-SON/sync_pistes_schema.png)
+![schema_implantation_pistes](./sync_pistes_schema.png)
 
 ## Performances mesurées (bullshit)
 
