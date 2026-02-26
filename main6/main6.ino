@@ -45,7 +45,7 @@ bool playing[MAXTRACKS];
 
 float analogDiv = 1.0/1023.0;
 unsigned long lastPulse = 0;
-unsigned long loopLengthBytes = 0;   // reference length
+// unsigned long loopLengthBytes = 0;   // unused, removed
 unsigned long loopLength;
 unsigned long tracksBeginning[MAXTRACKS];
 
@@ -58,6 +58,8 @@ void setup() {
   pinMode(0, INPUT_PULLUP);
   pinMode(1, INPUT_PULLUP);
   pinMode(2, INPUT_PULLUP);
+  pinMode(5, OUTPUT);        // metronome LED
+  pinMode(6, OUTPUT);        // recording indicator
 
   AudioMemory(BLOCKS);
 
@@ -105,15 +107,6 @@ void metronome(){
   }
 }
 
-float setDelay_() {
-  float bpm = analogRead(A1); // entre 0 et 1023
-  
-  bpm = bpm/4 + 20; // 20 et ~260
-  
-  float delay_ = 60/bpm;
-  
-  return delay_;
-}
 void loop() {
   metronome();
   setVolume();
@@ -152,32 +145,21 @@ void loop() {
 // =================================================
 
 void mainButton() {
+  // pressing when not recording starts a new take, unless we've already
+  // reached the maximum number of tracks.
 
-  // ---- FIRST TRACK ----
-  if (trackCount == 0) {
-
-    if (!recording) {
-      startRecording();
+  if (!recording) {
+    if (trackCount >= MAXTRACKS) {
+      Serial.println("Max tracks reached");
+      return;
     }
-    else {
-      stopRecording();
-      startLast();
-    }
-  }
-
-  // ---- OVERDUBS ----
-  else {
-
-    if (!recording) {
-      startRecording();
-    }
-    else {
-      stopRecording();
-      startLast();
-
-      if (trackCount > MAXTRACKS)
-          trackCount = MAXTRACKS;
-    }
+    startRecording();
+  } else {
+    // stop the current recording and immediately kick off playback of that
+    // new layer. stopRecording() increments trackCount, so startLast() will
+    // address the correct index.
+    stopRecording();
+    startLast();
   }
 }
 
@@ -186,36 +168,44 @@ void mainButton() {
 void undoTrack() {
 
   if (trackCount > 0) {
-
     Serial.print("Undo");
     Serial.println(trackCount);
 
+    // delete the last track and then restart whatever remains so that the
+    // loops continue uninterrupted
     players[trackCount-1].stop();
     const char* name = trackNames[trackCount-1];
     if (SD.exists(name)) SD.remove(name);
 
-    playing[trackCount-1] = false;
     trackCount--;
+    playing[trackCount] = false;
+
+    // relaunch remaining loops from their current positions
+    stopAll();
+    for (int i = 0; i < trackCount; i++) {
+      startPlaying(i);
+    }
   }
 }
 
 void startRecording() {
+  // refuse to start if we've already reached the limit or if we don't have a
+  // filename for the next track
+  if (trackCount >= MAXTRACKS) return;
 
   lastPulse = millis();
 
-  currentRec = trackCount+1;
+  currentRec = trackCount + 1;
   recording = true;
 
   Serial.print("Starting recording of ");
   Serial.println(currentRec);
 
-  const char* name = trackNames[currentRec-1]; // pcq les indices ils commencent à 0 gneugneugneu
-  tracksBeginning[currentRec-1]= micros();
+  const char* name = trackNames[currentRec-1]; // indices start at 0
+  tracksBeginning[currentRec-1] = micros();
 
   if (SD.exists(name)) SD.remove(name);
-
   frec = SD.open(name, FILE_WRITE);
-
   queue1.begin();
 }
 
@@ -252,21 +242,20 @@ void stopRecording() {
   Serial.print("Stopping record of ");
   Serial.println(currentRec);
 
-  if (trackCount==0) loopLength = micros() - tracksBeginning[currentRec-1]; // saving mainloop duration
-  
-  queue1.end();
+  if (trackCount == 0) loopLength = micros() - tracksBeginning[currentRec-1]; // saving mainloop duration
 
+  queue1.end();
   while (queue1.available()) {
     frec.write((byte*)queue1.readBuffer(),256);
     queue1.freeBuffer();
   }
-
   frec.close();
 
   // Update parameters
   recording = false;
   currentRec = -1;
-  trackCount +=1;
+  trackCount++;
+  if (trackCount > MAXTRACKS) trackCount = MAXTRACKS; // defensive clamp
 
   lastPulse = millis();
 }
@@ -315,12 +304,21 @@ void checkLoopEnd() {
 void setGain() {
   // TODO: read the peak1 object and adjust sgtl5000_1.micGain()
   // if anyone gets this working, please submit a github pull request :-)
-  float readGain = analogRead(A2)*analogDiv;
+  float readGain = analogRead(A3)*analogDiv;
   sgtl5000_1.micGain(readGain);
 }
 
 void setVolume() {
-  float readVolume = analogRead(A0)*analogDiv;
+  float readVolume = analogRead(A2)*analogDiv;
   sgtl5000_1.volume(readVolume);
 }
 
+float setDelay_() {
+  float bpm = analogRead(A0); // entre 0 et 1023
+  
+  bpm = bpm/4 + 20; // 20 et ~260
+  
+  float delay_ = 60/bpm;
+  
+  return delay_;
+}
